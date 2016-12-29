@@ -79,8 +79,8 @@ int main( int argc, char** argv )
     		uchar myself = imageLuma.at<uchar>(i, j);
     		int mcount = 0, Mcount = 0;
 
-    		for(int y=-padwid;y<padwid;y++){
-    			for(int x=-padwid;x<padwid;x++){
+    		for(int y=-padwid;y<=padwid;y++){
+    			for(int x=-padwid;x<=padwid;x++){
     				uchar neighbor = padimageLuma.at<uchar>(padwid+i +y, padwid+j +x);
     				if(myself > neighbor){++mcount;}
     				else if(neighbor > myself){++Mcount;}
@@ -96,10 +96,12 @@ int main( int argc, char** argv )
 
 
 /*    
-	threshold(localMin, localMin, 1, 255, cv::THRESH_BINARY);
+    imwrite( "Max.png", localMax);
+    imwrite("min.png", localMin);     
+
     namedWindow("Output", cv::WINDOW_AUTOSIZE);
-    imshow("Output", localMin);
-    waitKey(0);
+    imshow("Output", localMax);
+    waitKey(0);   
 */
 
 
