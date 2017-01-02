@@ -12,7 +12,8 @@ Subr2009Edge/ <br />
   
 Before run the code,  <br />
 1) put input images in `data/input`, and edit the input path in `run.sh`  <br />
-2) you should have Matlab installed, and add its path to `$PATH`  <br />
+2) you should have opencv installed <br />
+3) you should have Matlab installed, and add its path to `$PATH`  <br />
 (for me, it's like `export PATH=$PATH:/usr/local/MATLAB/R2014a/bin`)  <br />
   
 To run the code, first `make` to compile the EdgePreservedBlur.cpp file.  <br />
