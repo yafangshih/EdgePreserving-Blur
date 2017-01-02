@@ -1,2 +1,2 @@
-./bin/EdgePreservedBlur ./refcode/images/bird.jpg
+./bin/EdgePreservedBlur ./data/input/stairs.jpg
 matlab -nodisplay -nodesktop -r "LeastSquare"

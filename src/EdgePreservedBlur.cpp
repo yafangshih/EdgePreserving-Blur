@@ -233,10 +233,6 @@ int main( int argc, char** argv ){
         return -1;
     }
 
-//    cout << basename(argv[1]) << endl;
-
-//    return 0;
-
     N = image.rows;
     M = image.cols;
 
@@ -248,14 +244,8 @@ int main( int argc, char** argv ){
 
     Mat localMax(N, M, CV_8UC1, Scalar(0) );
     Mat localMin(N, M, CV_8UC1, Scalar(0) );
-
     localMm(localMax, localMin, YUV[0]);
 
-/*    
-    double min, max;
-    minMaxLoc(YUV[0], &min, &max); 
-    if(max > 1){ YUV[0].convertTo(YUV[0], CV_32FC1);  YUV[0] = YUV[0]/255.0; }
-*/
     YUV[0].convertTo(YUV[0], CV_32FC1);  
     YUV[0] = YUV[0]/255.0;
 

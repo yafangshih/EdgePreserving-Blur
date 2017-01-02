@@ -1,3 +1,5 @@
 refcode/results/*
 .DS_Store
 bin/*
+data/*
+tmp/*

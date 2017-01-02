@@ -38,7 +38,7 @@ end
 
 delete('dim.txt');
 
-% figure
-imwrite(EMean, filename{1,1});
+f=sprintf('data/output/%s', filename{1,1});
+imwrite(EMean, f);
 
 exit;
