@@ -2,6 +2,7 @@ CC=g++
 #CFLAGS+=-g
 CFLAGS+=`pkg-config --cflags opencv`
 LDFLAGS+=`pkg-config --libs opencv`
+CFLAGS+=-fopenmp
 
 #Current make system
 BIN=./bin/

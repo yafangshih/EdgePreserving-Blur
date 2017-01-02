@@ -1,4 +1,4 @@
-[consts_len, N, M] = textread('dim.txt', '%d %d %d\n');
+[filename, consts_len, N, M] = textread('dim.txt', '%s %d %d %d\n');
 imgSize = N*M;
 
 
@@ -38,5 +38,7 @@ end
 
 delete('dim.txt');
 
-figure
-imshow(EMean);
+% figure
+imwrite(EMean, filename{1,1});
+
+exit;

@@ -4,19 +4,14 @@
 #include <iostream>
 #include <cstdio>
 #include <math.h>
-#include <Eigen/Dense>
-#include <Eigen/Sparse>
-#include <Eigen/IterativeLinearSolvers>
 #include <fstream>
-
-#define N 256
-#define M 382
+#include <omp.h>
 
 using namespace cv;
 using namespace std;
-using namespace Eigen;
 
 int ksize = 3;
+int N, M;
 
 string type2str(int type) {
   string r;
@@ -41,25 +36,12 @@ string type2str(int type) {
   return r;
 }
 
-//Mat getColorExact(Mat localm, Mat Y, Mat Img){
 void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
     // 0-255, 1-255, 0-255
     // 0-255, 0-1, 0-1
 
-//    int N = localm.rows, M = localm.cols; // 256, 382
-/*
-    double min, max;
-    minMaxLoc(Img, &min, &max); 
-    cout << "min " << min << ", max " << max << endl;
-*/
-
-
-
-//    int indsM[N][M];
-
     int** indsM = new int*[N];
     for(int i = 0; i < N; ++i) indsM[i] = new int[M];
-
 
     int c = 0;
     
@@ -69,44 +51,17 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
             ++c;
         }
     } 
-/*    
-    for(int i=0;i<6;i++){
-        for(int j=0;j<5;j++){
-            printf("%d ", indsM[i][j]); 
-        }
-        printf("\n");
-    } 
-*/
+
     int *lblInds = new int[N*M];
     for(int i=0;i<N*M; i++){lblInds[i] = -1;}
 
     c=0;
-/*
-    int d = 0;
-    for(int j=0;j<M;j++){
-        for(int i=0;i<N;i++){
-            if(localm.at<uchar>(i, j) == uchar(255)){
-                lblInds[c] = d; 
-                
-            }
-            c++; 
-            d++;
-        }
-    }
-*/
-//    printf("%d %d %d", c, lblInds[0], lblInds[c-1]);
-//    return Y;
     
     int wd = 1;
     int *col_inds = new int[N*M * 3*3];
     int *row_inds = new int[N*M * 3*3];
     float *vals = new float[N*M * 3*3];
 
-/*    
-    int col_inds[N*M * 3*3];
-    int row_inds[N*M * 3*3];
-    int vals[N*M * 3*3];
-*/
     float gvals[3*3];
 
 
@@ -201,14 +156,6 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
         }
     }
 
-    // ------------------------------------------------------------------------------------------------------------
-    
-    if(channel == 0 && (Mm == 'M')){
-        ofstream filedim;
-        filedim.open ("dim.txt");
-        filedim << consts_len << " " << N << " " << M << endl;
-        filedim.close();
-    }
 
     char buffer [50];
     sprintf(buffer, "A%d%c.txt", channel, Mm);
@@ -233,19 +180,47 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
     }
     fileb.close();
 
-
-
-
-    // ------------------------------------------------------------------------------------------------------------
-
-    // ------------------------------------------------------------------------------------------------------------
-    //return output;
-//    */
-
 }
 
-int main( int argc, char** argv )
-{
+void localMm(Mat& localMax, Mat& localMin, Mat Y){
+    
+    int padwid = ksize/2;
+    Mat padimageLuma(N+padwid*2, M+padwid*2, CV_8UC1 );
+    copyMakeBorder(Y, padimageLuma, padwid, padwid, padwid, padwid, BORDER_REFLECT_101);
+    
+    for(int i=0;i<N;i++){
+        for(int j=0;j<M;j++){
+            uchar myself = Y.at<uchar>(i, j);
+            int mcount = 0, Mcount = 0;
+
+            for(int y=-padwid;y<=padwid;y++){
+                for(int x=-padwid;x<=padwid;x++){
+                    uchar neighbor = padimageLuma.at<uchar>(padwid+i +y, padwid+j +x);
+                    if(myself > neighbor){++mcount;}
+                    else if(neighbor > myself){++Mcount;}
+                }
+            }
+
+            if(Mcount <= ksize-1){localMax.at<uchar>(i, j) = uchar(255);}
+            if(mcount <= ksize-1){localMin.at<uchar>(i, j) = uchar(255);}
+
+        }
+    }
+}
+
+struct MatchPathSeparator{
+    bool operator()( char ch ) const {
+        return ch == '/';
+    }
+};
+string basename( string const& pathname ){
+    return string( 
+        find_if( pathname.rbegin(), pathname.rend(), MatchPathSeparator() ).base(), pathname.end() );
+}
+
+
+int main( int argc, char** argv ){
+
 	if( argc != 2){
      cout <<"*Error* Usage: EdgePreservedBlur [imgPath]" << endl;
      return -1;
@@ -258,90 +233,47 @@ int main( int argc, char** argv )
         return -1;
     }
 
+//    cout << basename(argv[1]) << endl;
+
+//    return 0;
+
+    N = image.rows;
+    M = image.cols;
+
     Mat imageyuv;
     cvtColor(image, imageyuv, CV_BGR2YCrCb); // 8UC3
 
-/*    
-	string ty =  type2str( imageyuv.type() );
-	printf("Matrix: %s %dx%d \n", ty.c_str(), imageyuv.cols, imageyuv.rows );
-	return 0;
-*/
-    Mat imageLuma(image.rows, image.cols, CV_8UC1 );
-    Mat UV( image.rows, image.cols, CV_8UC2 );
-    Mat out[] = { imageLuma, UV };
-    int from_to[] = {0,0, 1,1, 2,2};
-    mixChannels(&imageyuv, 1, out, 2, from_to, 3);
+    Mat YUV[3];   
+    split(imageyuv, YUV);
 
-    Mat localMax(imageLuma.rows, imageLuma.cols, CV_8UC1, Scalar(0) );
-    Mat localMin(imageLuma.rows, imageLuma.cols, CV_8UC1, Scalar(0) );
+    Mat localMax(N, M, CV_8UC1, Scalar(0) );
+    Mat localMin(N, M, CV_8UC1, Scalar(0) );
 
-/*
-	Vec3b intensity = img.at<Vec3b>(y, x);
-	uchar blue = intensity.val[0];
-	uchar green = intensity.val[1];
-	uchar red = intensity.val[2];
-*/
-
-    int padwid = ksize/2;
-    Mat padimageLuma(imageLuma.rows+padwid*2, imageLuma.cols+padwid*2, CV_8UC1 );
-    copyMakeBorder(imageLuma, padimageLuma, padwid, padwid, padwid, padwid, BORDER_REFLECT_101);
-    
-    for(int i=0;i<imageLuma.rows;i++){
-    	for(int j=0;j<imageLuma.cols;j++){
-    		uchar myself = imageLuma.at<uchar>(i, j);
-    		int mcount = 0, Mcount = 0;
-
-    		for(int y=-padwid;y<=padwid;y++){
-    			for(int x=-padwid;x<=padwid;x++){
-    				uchar neighbor = padimageLuma.at<uchar>(padwid+i +y, padwid+j +x);
-    				if(myself > neighbor){++mcount;}
-    				else if(neighbor > myself){++Mcount;}
-    			}
-    		}
-
-    		if(Mcount <= ksize-1){localMax.at<uchar>(i, j) = uchar(255);}
-    		if(mcount <= ksize-1){localMin.at<uchar>(i, j) = uchar(255);}
-
-    	}
-    }
+    localMm(localMax, localMin, YUV[0]);
 
 /*    
-    imwrite( "Max.png", localMax);
-    imwrite("min.png", localMin);     
-
-    namedWindow("Output", cv::WINDOW_AUTOSIZE);
-    imshow("Output", localMax);
-    waitKey(0);   
-*/
     double min, max;
-    minMaxLoc(imageLuma, &min, &max); 
-    if(max > 1){ imageLuma.convertTo(imageLuma, CV_32FC1);  imageLuma = imageLuma/255.0; }
+    minMaxLoc(YUV[0], &min, &max); 
+    if(max > 1){ YUV[0].convertTo(YUV[0], CV_32FC1);  YUV[0] = YUV[0]/255.0; }
+*/
+    YUV[0].convertTo(YUV[0], CV_32FC1);  
+    YUV[0] = YUV[0]/255.0;
 
     Mat bgr[3];   
     split(image, bgr);
 
-    Mat Emaxima(image.rows, image.cols, CV_32FC1 );
-//    Mat Eminima(image.rows, image.cols, CV_32FC1 );
-//    Mat EM(image.rows, image.cols, CV_32FC1 );
+    ofstream filedim;
+    filedim.open ("dim.txt");
+    filedim << basename(argv[1]) << " " << N*M << " " << N << " " << M << endl;
+    filedim.close();
     
+    #pragma omp parallel for
     for(int i=0;i<3;i++){
-        minMaxLoc(bgr[i], &min, &max); 
-        if(max > 1){ bgr[i].convertTo(bgr[i], CV_32FC1);  bgr[i] = bgr[i]/255.0; }
-    //    Emaxima = getColorExact(localMax, imageLuma, bgr[0]);
-        getColorExact(localMax, imageLuma, bgr[i], i, 'M');
-        getColorExact(localMin, imageLuma, bgr[i], i, 'm');
+        bgr[i].convertTo(bgr[i], CV_32FC1);  
+        bgr[i] = bgr[i]/255.0; 
+        getColorExact(localMax, YUV[0], bgr[i], i, 'M');
+        getColorExact(localMin, YUV[0], bgr[i], i, 'm');
     }
-
-
-/*    Eminima = getColorExact(localMin, imageLuma, bgr[0]);
-    EM = (Emaxima + Eminima) / 2.0;
-    EM.convertTo(bgr[0], CV_8UC1); 
-
-    namedWindow("Output", cv::WINDOW_AUTOSIZE);
-    imshow("Output", bgr[0]);
-    waitKey(0);
-*/
-
 
     return 0;
 
