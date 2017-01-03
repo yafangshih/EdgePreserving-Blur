@@ -1,6 +1,9 @@
 [filename, consts_len, N, M, ksize] = textread('dim.txt', '%s %d %d %d %d\n');
 imgSize = N*M;
 
+Emaxima = zeros(N, M, 1, 'double');
+Eminima = zeros(N, M, 1, 'double');
+EMean = zeros(N, M, 3, 'double');
 
 
 for i=0:2
