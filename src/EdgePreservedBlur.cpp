@@ -45,9 +45,8 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
     for(int i = 0; i < N; ++i) indsM[i] = new int[M];
 
     int c = 0;
-    
-    for(int j=0;j<M;j++){
-        for(int i=0;i<N;i++){
+    for(int i=0;i<N;i++){  
+        for(int j=0;j<M;j++){
             indsM[i][j] = c;
             ++c;
         }
@@ -69,9 +68,8 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
     int consts_len = 0;
     int len = 0;
 
-    for(int j=0;j<M;j++){
-        for(int i=0;i<N;i++){
-            
+    for(int i=0;i<N;i++){
+        for(int j=0;j<M;j++){
             if(localm.at<uchar>(i, j) == uchar(0)){
                 
                 int tlen = 0;
@@ -173,8 +171,9 @@ void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
     ofstream fileb;
     fileb.open (buffer2);
     c=0;
-    for(int j=0;j<M;j++){
-        for(int i=0;i<N;i++){
+
+    for(int i=0;i<N;i++){
+        for(int j=0;j<M;j++){
             if(localm.at<uchar>(i, j) == uchar(255)){ fileb << Img.at<float>(i, j) << endl; }
             else{ fileb << "0" << endl; }
         }
