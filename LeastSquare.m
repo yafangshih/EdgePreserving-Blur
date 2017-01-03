@@ -1,4 +1,4 @@
-[filename, consts_len, N, M] = textread('dim.txt', '%s %d %d %d\n');
+[filename, consts_len, N, M, ksize] = textread('dim.txt', '%s %d %d %d %d\n');
 imgSize = N*M;
 
 
@@ -38,7 +38,7 @@ end
 
 delete('dim.txt');
 
-f=sprintf('data/output/%s', filename{1,1});
+f=sprintf('data/output/k%d%s', ksize, filename{1,1});
 imwrite(EMean, f);
 
 exit;

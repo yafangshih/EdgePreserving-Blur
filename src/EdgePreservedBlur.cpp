@@ -6,11 +6,12 @@
 #include <math.h>
 #include <fstream>
 #include <omp.h>
+#include <stdlib.h>
 
 using namespace cv;
 using namespace std;
 
-int ksize = 3;
+int ksize = 5;
 int N, M;
 
 string type2str(int type) {
@@ -221,8 +222,8 @@ string basename( string const& pathname ){
 
 int main( int argc, char** argv ){
 
-	if( argc != 2){
-     cout <<"*Error* Usage: EdgePreservedBlur [imgPath]" << endl;
+	if( argc != 3){
+     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] ksize" << endl;
      return -1;
     }
 
@@ -232,6 +233,8 @@ int main( int argc, char** argv ){
         cout <<  "*Error* Could not open or find the image" << std::endl ;
         return -1;
     }
+
+    ksize = (int)(strtol(argv[2], NULL, 10));
 
     N = image.rows;
     M = image.cols;
@@ -254,7 +257,7 @@ int main( int argc, char** argv ){
 
     ofstream filedim;
     filedim.open ("dim.txt");
-    filedim << basename(argv[1]) << " " << N*M << " " << N << " " << M << endl;
+    filedim << basename(argv[1]) << " " << N*M << " " << N << " " << M << " " << ksize << endl;
     filedim.close();
     
     #pragma omp parallel for
