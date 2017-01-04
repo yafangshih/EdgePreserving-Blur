@@ -1,5 +1,5 @@
 # EdgePreserving-Blur
-The implementation of Edge-preserving multiscale image decomposition based on local extrema. Subr, Kartic, Cyril Soler, and Frédo Durand. ACM Transactions on Graphics (TOG) 28.5 (2009): 147.<br />
+The c++ implementation of Edge-preserving multiscale image decomposition based on local extrema. Subr, Kartic, Cyril Soler, and Frédo Durand. ACM Transactions on Graphics (TOG) 28.5 (2009): 147.<br />
 
 Author: Ya-Fang Shih<br />
 yfshih.tw [at] gmail.com<br />
