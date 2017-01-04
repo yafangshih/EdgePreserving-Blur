@@ -1,11 +1,11 @@
-# Subr2009Edge
+# EdgePreserving-Blur
 The implementation of Edge-preserving multiscale image decomposition based on local extrema. Subr, Kartic, Cyril Soler, and Frédo Durand. ACM Transactions on Graphics (TOG) 28.5 (2009): 147.<br />
 
 Author: Ya-Fang Shih<br />
 yfshih.tw [at] gmail.com<br />
 
 **File structure:** <br />
-Subr2009Edge/ <br />
+EdgePreserving-Blur/ <br />
 &nbsp;&nbsp;&nbsp;&nbsp;bin/ <br /> 
 &nbsp;&nbsp;&nbsp;&nbsp;data/ <br />
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;input/ <br />
