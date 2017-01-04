@@ -1,3 +1,14 @@
+/*
+* Implementation codes of Edge-preserving blur
+*
+* Ya-Fang Shih yfshih.tw[at]gmail.com
+*
+* Dec. 2016
+* released under the FreeBSD license
+*/
+
+
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
@@ -5,7 +16,6 @@
 #include <cstdio>
 #include <math.h>
 #include <fstream>
-#include <omp.h>
 #include <stdlib.h>
 
 using namespace cv;

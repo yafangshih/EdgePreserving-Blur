@@ -1,3 +1,9 @@
+% 
+% Implementation codes of Edge-preserving blur
+% Ya-Fang Shih yfshih.tw[at]gmail.com
+% Dec. 2016 released under the FreeBSD license
+%
+
 [filename, consts_len, N, M, ksize] = textread('dim.txt', '%s %d %d %d %d\n');
 imgSize = N*M;
 
