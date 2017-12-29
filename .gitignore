@@ -1,5 +1,4 @@
 .DS_Store
 bin/*
-data/*
 tmp/*
 ref/ref/*
