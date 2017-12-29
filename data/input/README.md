@@ -1,3 +1,4 @@
 photo credit:
 
-glassblue: [Chihuly Garden and Glass](https://www.chihulygardenandglass.com/)
+glassblue.jpg: [Chihuly Garden and Glass](https://www.chihulygardenandglass.com/)
+glassred.jpg: [Chihuly Garden and Glass](https://www.chihulygardenandglass.com/)
