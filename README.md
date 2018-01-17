@@ -7,33 +7,3 @@ This program creates beautiful blurred images while preserving the edges, textur
 | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/input/glassred.jpg) <br /> [Chihuly Garden and Glass](https://www.chihulygardenandglass.com/) | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/output/glassred/glassred-k5.jpg) | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/output/glassred/glassred-k13.jpg) |
 | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/input/taipei101.jpg) [Dean Cheng](http://crazydean0420.phootime.com/) | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/output/taipei101/taipei101-k5.jpg) | ![alt text](https://github.com/yafangshih/EdgePreserving-Blur/blob/master/data/output/taipei101/taipei101-k13.jpg) |
 
-**File structure:** <br />
-EdgePreserving-Blur/ <br />
-&nbsp;&nbsp;&nbsp;&nbsp;bin/ <br /> 
-&nbsp;&nbsp;&nbsp;&nbsp;data/ <br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;input/ <br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;output/ <br />
-&nbsp;&nbsp;&nbsp;&nbsp;ref/ <br />
-&nbsp;&nbsp;&nbsp;&nbsp;src/ <br />
-  
-Before run the code,  <br />
-1) make folders according to the file structure, put input images in `data/input`, and edit the input path in `run.sh`  <br />
-2) you need opencv installed <br />
-3) you need Matlab installed, and add its path to `$PATH`  <br />
-(for me, it's like `export PATH=$PATH:/usr/local/MATLAB/R2014a/bin`)  <br />
-  
-To run the code, first `make` to compile the EdgePreservedBlur.cpp file.  <br />
-Then, simply `sh run.sh` to run the program.  <br />
-
-**My building environment**<br />
-Ubuntu 14.04<br />
-opencv 3.2.0<br />
-
-FYI, I also wrote a program in pure c++ (that is, not like the cpp-matlab mixed way here),  <br />
-and I used Eigen for solving Ax=b.  <br />
-However, the performance was much worse than pure matlab codes!  <br />
-(I'll report the running time later)  <br /><br />
-So, my final decision is to convert between c++ and matlab,  <br />
-and let c++ handle the for loops and have matlab responsible for solving the linear system.  <br />
-The program is much faster than pure matlab :D <br />
-(for a 2048\*1080 image, cpp+matlab: 7min, matlab: 22min)  <br />
