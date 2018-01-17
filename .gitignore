@@ -1,6 +1,0 @@
-.DS_Store
-build/*
-legacy/*
-tmp/*
-ref/ref/*
-.gitignore
