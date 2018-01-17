@@ -3,7 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cstdio>
-#include <math.h>
+#include <cmath>
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 #include <Eigen/IterativeLinearSolvers>
@@ -22,7 +22,8 @@ private:
 
     void computeLocalExtrema();
     void computeE();
-    Mat getColorExact(Mat, Mat);
+    Mat getColorExact(const Mat, const Mat);
+
 public:
     EdgePreservingBlur(Mat, int);
     Mat getOutputImg();
@@ -48,7 +49,6 @@ EdgePreservingBlur::EdgePreservingBlur(Mat _image, int _k){
 void EdgePreservingBlur::computeLocalExtrema(){
     int halfk = k/2.;
     Mat padLuminance(H + halfk*2, W + halfk*2, CV_8UC1 );
-//    cout << H + halfk*2 << endl;
     copyMakeBorder(luminance, padLuminance, halfk, halfk, halfk, halfk, BORDER_REFLECT_101);
 
     for(int y=0; y<H; y++){
@@ -76,31 +76,31 @@ void EdgePreservingBlur::computeE(){
     luminance.convertTo(luminance, CV_32FC1); 
     image.convertTo(image, CV_32FC3);
 
+    double minVal = 0, maxVal = 0;
+    minMaxLoc(luminance, &minVal, &maxVal); 
+    if(maxVal > 1.){ luminance /= 255.; }
+    minMaxLoc(image, &minVal, &maxVal); 
+    if(maxVal > 1.){ image /= 255.; }
+
     Mat bgr[3];   
     split(image, bgr);
 
     Mat Emaxima(H, W, CV_32FC1);
     Mat Eminima(H, W, CV_32FC1);
-    Mat EM(H, W, CV_32FC1);
+    Mat EMean(H, W, CV_32FC1);
     
     vector<Mat> channels;
 
     for(int c=0; c<3; c++){
         Emaxima = getColorExact(localMax, bgr[c]);
         Eminima = getColorExact(localMin, bgr[c]);
-        EM = (Emaxima + Eminima) / 2.;
-        EM.convertTo(bgr[c], CV_8UC1); 
+        EMean = (Emaxima + Eminima) / 2.;
+        EMean.convertTo(bgr[c], CV_8UC1); 
         channels.push_back(bgr[c]);
     }
     merge(channels, outputImg);
 }
-Mat EdgePreservingBlur::getColorExact(Mat localm, Mat img){
-    
-    double minVal = 0, maxVal = 0;
-    minMaxLoc(luminance, &minVal, &maxVal); 
-    if(maxVal > 1.){ luminance /= 255.; }
-    minMaxLoc(img, &minVal, &maxVal); 
-    if(maxVal > 1.){ img /= 255.; }
+Mat EdgePreservingBlur::getColorExact(const Mat localm, const Mat img){
     
     int halfk = k / 2.;
     int *colIndex = new int[H*W * k*k];
@@ -222,7 +222,7 @@ Mat EdgePreservingBlur::getOutputImg(){
 
 int main( int argc, char** argv ){
 	if( argc != 3){
-     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] k" << endl;
+     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] [k]" << endl;
      return -1;
     }
 
@@ -235,7 +235,7 @@ int main( int argc, char** argv ){
 
     int k = atoi(argv[2]);
     EdgePreservingBlur BlurImg(image, k);
-    imwrite("../data/output/result.png", BlurImg.getOutputImg());
+    imwrite("../data/output/result-" + to_string(k) + ".png", BlurImg.getOutputImg());
 
     return 0;
 }
