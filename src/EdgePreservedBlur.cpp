@@ -1,238 +1,228 @@
-/*
-* Implementation codes of Edge-preserving blur
-*
-* Ya-Fang Shih yfshih.tw[at]gmail.com
-*
-* Dec. 2016
-* released under the FreeBSD license
-*/
-
-
-
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <cstdio>
 #include <math.h>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include <Eigen/IterativeLinearSolvers>
 #include <fstream>
-#include <stdlib.h>
 
 using namespace cv;
 using namespace std;
+using namespace Eigen;
 
-int ksize = 5;
-int N, M;
+class EdgePreservingBlur{
+private:
+    Mat image;
+    int H, W, k;
+    Mat luminance, localMax, localMin, outputImg;
+    float EPS = 0.000002, ALPHA  = 0.1888;
 
-string type2str(int type) {
-  string r;
+    void computeLocalExtrema();
+    void computeE();
+    Mat getColorExact(Mat, Mat);
+public:
+    EdgePreservingBlur(Mat, int);
+    Mat getOutputImg();
+};
 
-  uchar depth = type & CV_MAT_DEPTH_MASK;
-  uchar chans = 1 + (type >> CV_CN_SHIFT);
+EdgePreservingBlur::EdgePreservingBlur(Mat _image, int _k){
+    image = _image;
+    k = _k;
+    H = image.rows;
+    W = image.cols;
+    luminance = Mat(H, W, CV_8UC1);
+    localMax = Mat(H, W, CV_8UC1, Scalar(0));
+    localMin = Mat(H, W, CV_8UC1, Scalar(0));
+    outputImg = Mat(H, W, CV_8UC3);
 
-  switch ( depth ) {
-    case CV_8U:  r = "8U"; break;
-    case CV_8S:  r = "8S"; break;
-    case CV_16U: r = "16U"; break;
-    case CV_16S: r = "16S"; break;
-    case CV_32S: r = "32S"; break;
-    case CV_32F: r = "32F"; break;
-    case CV_64F: r = "64F"; break;
-    default:     r = "User"; break;
-  }
+    Mat imageyuv;
+    cvtColor(image, imageyuv, CV_BGR2YCrCb); 
+    extractChannel(imageyuv, luminance, 0);
 
-  r += "C";
-  r += (chans+'0');
-
-  return r;
+    computeLocalExtrema();
+    computeE();
 }
+void EdgePreservingBlur::computeLocalExtrema(){
+    int halfk = k/2.;
+    Mat padLuminance(H + halfk*2, W + halfk*2, CV_8UC1 );
+//    cout << H + halfk*2 << endl;
+    copyMakeBorder(luminance, padLuminance, halfk, halfk, halfk, halfk, BORDER_REFLECT_101);
 
-void getColorExact(Mat localm, Mat Y, Mat Img, int channel, char Mm){
-    // 0-255, 1-255, 0-255
-    // 0-255, 0-1, 0-1
+    for(int y=0; y<H; y++){
+        for(int x=0; x<W; x++){
+            uchar center = luminance.at<uchar>(y, x);
+            int mcount = 0, Mcount = 0;
 
-    int** indsM = new int*[N];
-    for(int i = 0; i < N; ++i) indsM[i] = new int[M];
-
-    int c = 0;
-    for(int i=0;i<N;i++){  
-        for(int j=0;j<M;j++){
-            indsM[i][j] = c;
-            ++c;
+            for(int dy=-halfk; dy<=halfk; dy++){
+                for(int dx=-halfk; dx<=halfk; dx++){
+                    uchar neighbor = padLuminance.at<uchar>(y+halfk+dy, x+halfk+dx);
+                    if(center > neighbor){++mcount;}
+                    else if(neighbor > center){++Mcount;}
+                }
+            }
+ 
+            // Pixel p is reported as a maxima (resp. minima) 
+            // if at most k − 1 elements in the k × k neighborhood around p are greater (resp. smaller) 
+            // than the value at pixel p
+            if(Mcount <= k-1){localMax.at<uchar>(y, x) = uchar(255);}
+            if(mcount <= k-1){localMin.at<uchar>(y, x) = uchar(255);}
         }
-    } 
+    }
+}
+void EdgePreservingBlur::computeE(){
+    luminance.convertTo(luminance, CV_32FC1); 
+    image.convertTo(image, CV_32FC3);
 
-    int *lblInds = new int[N*M];
-    for(int i=0;i<N*M; i++){lblInds[i] = -1;}
+    Mat bgr[3];   
+    split(image, bgr);
 
-    c=0;
+    Mat Emaxima(H, W, CV_32FC1);
+    Mat Eminima(H, W, CV_32FC1);
+    Mat EM(H, W, CV_32FC1);
     
-    int wd = 1;
-    int *col_inds = new int[N*M * 3*3];
-    int *row_inds = new int[N*M * 3*3];
-    float *vals = new float[N*M * 3*3];
+    vector<Mat> channels;
 
-    float gvals[3*3];
+    for(int c=0; c<3; c++){
+        Emaxima = getColorExact(localMax, bgr[c]);
+        Eminima = getColorExact(localMin, bgr[c]);
+        EM = (Emaxima + Eminima) / 2.;
+        EM.convertTo(bgr[c], CV_8UC1); 
+        channels.push_back(bgr[c]);
+    }
+    merge(channels, outputImg);
+}
+Mat EdgePreservingBlur::getColorExact(Mat localm, Mat img){
+    
+    double minVal = 0, maxVal = 0;
+    minMaxLoc(luminance, &minVal, &maxVal); 
+    if(maxVal > 1.){ luminance /= 255.; }
+    minMaxLoc(img, &minVal, &maxVal); 
+    if(maxVal > 1.){ img /= 255.; }
+    
+    int halfk = k / 2.;
+    int *colIndex = new int[H*W * k*k];
+    int *rowIndex = new int[H*W * k*k];
+    float *vals = new float[H*W * k*k];
 
+    float *neighborhoodVals = new float[k*k]; // [neighbor0, neighbor1, ..., center]
 
-    int consts_len = 0;
-    int len = 0;
+    int rowptr = 0;
+    int numPixels = 0;
 
-    for(int i=0;i<N;i++){
-        for(int j=0;j<M;j++){
-            if(localm.at<uchar>(i, j) == uchar(0)){
-                
-                int tlen = 0;
-                for(int ii=max(0, i-wd); ii<=min(i+wd, N-1); ii++){
-                    for(int jj=max(0, j-wd); jj<=min(j+wd, M-1); jj++){
-
-                        if((ii!=i) || (jj!=j)){
-                            row_inds[len] = consts_len;
-                            col_inds[len] = indsM[ii][jj];
-                            gvals[tlen] = Y.at<float>(ii, jj);
-                            len++;
-                            tlen++;
-                            
+    for(int y=0; y<H; y++){
+        for(int x=0; x<W; x++){
+            // if not a local extrema
+            if(localm.at<uchar>(y, x) == uchar(0)){
+                int Nr = 0;
+                for(int neighborY=max(0, y-halfk); neighborY<=min(y+halfk, H-1); neighborY++){
+                    for(int neighborX=max(0, x-halfk); neighborX<=min(x+halfk, W-1); neighborX++){
+                        if((neighborY != y) || (neighborX != x)){
+                            rowIndex[numPixels] = rowptr;
+                            colIndex[numPixels] = (neighborY * W) + neighborX; 
+                            neighborhoodVals[Nr] = luminance.at<float>(neighborY, neighborX);
+                            numPixels++;
+                            Nr++;
                         }
                     }
                 }
-                
-                float t_val = Y.at<float>(i, j);
-                gvals[tlen] = t_val;
+                float center = luminance.at<float>(y, x);
+                neighborhoodVals[Nr] = center;
 
-                float sum = 0;
-                for(int k=0; k<=tlen; k++){
-                   sum += gvals[k];
+                // Var(X) = E[(X-avg)^2]
+
+                // local average around r
+                float sum = 0.;
+                for(int i=0; i<=Nr; i++){
+                   sum += neighborhoodVals[i];
                 }
-                float avg = sum / (tlen+1);
+                float average = sum / (Nr+1);
 
-                float tmp[3*3];
-                for(int k=0; k<=tlen; k++){
-                   tmp[k] = gvals[k] - avg;
-                   tmp[k] = tmp[k]*tmp[k];
+                // local variance around r
+                float *dist = new float[k*k]();
+                for(int i=0; i<=Nr; i++){
+                   dist[i] = neighborhoodVals[i] - average;
+                   dist[i] = dist[i] * dist[i];
                 }
-                sum = 0;
-                for(int k=0; k<=tlen; k++){
-                   sum += tmp[k];
+                sum = 0.;
+                for(int i=0; i<=Nr; i++){
+                   sum += dist[i];
                 }
-                float c_var = sum / (tlen+1);
+                float variance = sum / (Nr+1);
 
-                float csig = c_var * 0.6;
-
-                for(int k=0; k<tlen; k++){
-                   tmp[k] = gvals[k] - t_val;
-                   tmp[k] = tmp[k]*tmp[k];
+                // numerator of equation (2) : (I(r) - I(s)) ^ 2
+                float *similarity = new float[k*k]();
+                for(int i=0; i<Nr; i++){
+                   similarity[i] = neighborhoodVals[i] - center; 
+                   similarity[i] = similarity[i] * similarity[i];
                 }
-                float mgv = tmp[0];
-                for(int k=0; k<tlen; k++){
-                   if(tmp[k] < mgv){ mgv = tmp[k]; }
+                // equation (2)
+                float wrs[k*k];
+                for(int i=0; i<Nr; i++){
+                    wrs[i] = ALPHA * exp(-(similarity[i] / (2 * variance + EPS))); 
                 }
-
-                if( csig<(-mgv/log(0.01)) ){
-                    csig = -mgv/log(0.01);
+                // wrs is a weighting function that sums to one [Levin et al., 2004]
+                sum = 0.;
+                for(int i=0; i<Nr; i++){
+                   sum += wrs[i];
                 }
-                if( csig<0.000002 ){
-                    csig = 0.000002;
+                for(int i=0; i<Nr; i++){
+                   wrs[i] = wrs[i] / sum;
                 }
-                
-                for(int k=0; k<tlen; k++){
-                    tmp[k] = -(tmp[k] / csig);
-                    gvals[k] = exp(tmp[k]);
-                }
-                sum = 0;
-                for(int k=0; k<tlen; k++){
-                   sum += gvals[k];
-                }
-                for(int k=0; k<tlen; k++){
-                   gvals[k] = gvals[k]/sum;
-                }
-
-                for(int k=0; k<tlen; k++){
-                    vals[ len-tlen+k ] = -gvals[k];
-                }
-                
-                
-            }
-            
-            row_inds[len] = consts_len;
-            col_inds[len] = indsM[i][j];
-            vals[len] = 1;
-            
-            len++; 
-            consts_len++;
-            
-            
-        }
-    }
-
-
-    char buffer [50];
-    sprintf(buffer, "A%d%c.txt", channel, Mm);
-    
-    ofstream fileA;
-    fileA.open (buffer);
-    for(int k=0;k<len;k++){
-        fileA << row_inds[k] << " " << col_inds[k] << " " << vals[k] << endl;
-    }
-    fileA.close();
-
-    char buffer2 [50];
-    sprintf(buffer2, "b%d%c.txt", channel, Mm);
-    ofstream fileb;
-    fileb.open (buffer2);
-    c=0;
-
-    for(int i=0;i<N;i++){
-        for(int j=0;j<M;j++){
-            if(localm.at<uchar>(i, j) == uchar(255)){ fileb << Img.at<float>(i, j) << endl; }
-            else{ fileb << "0" << endl; }
-        }
-    }
-    fileb.close();
-
-}
-
-void localMm(Mat& localMax, Mat& localMin, Mat Y){
-    
-    int padwid = ksize/2;
-    Mat padimageLuma(N+padwid*2, M+padwid*2, CV_8UC1 );
-    copyMakeBorder(Y, padimageLuma, padwid, padwid, padwid, padwid, BORDER_REFLECT_101);
-    
-    for(int i=0;i<N;i++){
-        for(int j=0;j<M;j++){
-            uchar myself = Y.at<uchar>(i, j);
-            int mcount = 0, Mcount = 0;
-
-            for(int y=-padwid;y<=padwid;y++){
-                for(int x=-padwid;x<=padwid;x++){
-                    uchar neighbor = padimageLuma.at<uchar>(padwid+i +y, padwid+j +x);
-                    if(myself > neighbor){++mcount;}
-                    else if(neighbor > myself){++Mcount;}
+                for(int i=0; i<Nr; i++){
+                    vals[ numPixels-Nr+i ] = -wrs[i];
                 }
             }
-
-            if(Mcount <= ksize-1){localMax.at<uchar>(i, j) = uchar(255);}
-            if(mcount <= ksize-1){localMin.at<uchar>(i, j) = uchar(255);}
-
+            rowIndex[numPixels] = rowptr;
+            colIndex[numPixels] = (y * W) + x;  
+            vals[numPixels] = 1;
+            
+            numPixels++; 
+            rowptr++;
         }
     }
-}
 
-struct MatchPathSeparator{
-    bool operator()( char ch ) const {
-        return ch == '/';
+    SparseMatrix<float> A(rowptr, H*W);
+    VectorXf b = VectorXf::Zero(rowptr);
+    VectorXf output(H*W);
+
+    // Initialize triplets
+    std::vector<Eigen::Triplet<float> > tripletList;
+    tripletList.reserve(numPixels);
+    for(int i=0; i<numPixels; i++){
+        tripletList.push_back(Eigen::Triplet<float>(rowIndex[i], colIndex[i], vals[i]));
     }
-};
-string basename( string const& pathname ){
-    return string( 
-        find_if( pathname.rbegin(), pathname.rend(), MatchPathSeparator() ).base(), pathname.end() );
-}
 
+    // Initialize A and b
+    A.setFromTriplets(tripletList.begin(), tripletList.end());    
+    for(int y=0; y<H; y++){
+        for(int x=0; x<W; x++){
+            if(localm.at<uchar>(y, x) == uchar(255)){ b(y*W + x) = img.at<float>(y, x); }
+        }
+    }
+
+    // Solve Ax=b
+    LeastSquaresConjugateGradient<SparseMatrix<float> > lscg;
+    lscg.compute(A);
+    output = lscg.solve(b);
+
+    Mat out(H, W, CV_32FC1);
+    for(int y=0; y<H; y++){
+         for(int x=0; x<W; x++){
+            out.at<float>(y, x) = output[y*W + x] * 255.;
+        }
+    }
+    return out;
+}
+Mat EdgePreservingBlur::getOutputImg(){
+    return outputImg;
+}
 
 int main( int argc, char** argv ){
-
 	if( argc != 3){
-     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] ksize" << endl;
+     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] k" << endl;
      return -1;
     }
 
@@ -243,41 +233,9 @@ int main( int argc, char** argv ){
         return -1;
     }
 
-    ksize = (int)(strtol(argv[2], NULL, 10));
-
-    N = image.rows;
-    M = image.cols;
-
-    Mat imageyuv;
-    cvtColor(image, imageyuv, CV_BGR2YCrCb); // 8UC3
-
-    Mat YUV[3];   
-    split(imageyuv, YUV);
-
-    Mat localMax(N, M, CV_8UC1, Scalar(0) );
-    Mat localMin(N, M, CV_8UC1, Scalar(0) );
-    localMm(localMax, localMin, YUV[0]);
-
-    YUV[0].convertTo(YUV[0], CV_32FC1);  
-    YUV[0] = YUV[0]/255.0;
-
-    Mat bgr[3];   
-    split(image, bgr);
-
-    ofstream filedim;
-    filedim.open ("dim.txt");
-    filedim << basename(argv[1]) << " " << N*M << " " << N << " " << M << " " << ksize << endl;
-    filedim.close();
-    
-    #pragma omp parallel for
-    for(int i=0;i<3;i++){
-        bgr[i].convertTo(bgr[i], CV_32FC1);  
-        bgr[i] = bgr[i]/255.0; 
-        getColorExact(localMax, YUV[0], bgr[i], i, 'M');
-        getColorExact(localMin, YUV[0], bgr[i], i, 'm');
-    }
+    int k = atoi(argv[2]);
+    EdgePreservingBlur BlurImg(image, k);
+    imwrite("../data/output/result.png", BlurImg.getOutputImg());
 
     return 0;
-
-
 }
