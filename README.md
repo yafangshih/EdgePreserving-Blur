@@ -1,6 +1,6 @@
 ## EdgePreserving-Blur
 This program creates beautiful blurred images while preserving the edges, texture and details in them. <br />
-Basically, it's a c++ implementation of "**Edge-preserving multiscale image decomposition based on local extrema**" by Subr, Kartic, Cyril Soler, and Frédo Durand. ACM Transactions on Graphics (TOG) 28.5 (2009): 147.<br />
+Basically, it's a c++ implementation of **Edge-preserving multiscale image decomposition based on local extrema** by Subr, Kartic, Cyril Soler, and Frédo Durand. ACM Transactions on Graphics (TOG) 28.5 (2009): 147.<br />
 
 | Input | k=5 | k=13 |
 | :----: | :----: | :----: |
@@ -25,5 +25,8 @@ $ make
 ### Example <br />
 ```
 $ cd EdgePreserving-Blur
-$ bulid/EdgePreservingBlur data/input/taipei101.jpg 3
+$ ./build/EdgePreservingBlur ./data/input/taipei101.jpg 3
 ```
+
+### Running Time <br />
+It takes `5m51.548s` to process a 1463 × 2048 image (`data/input/taipei101.jpg`) with k=3 on a MacBook Pro 2014.
