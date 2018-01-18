@@ -222,20 +222,20 @@ Mat EdgePreservingBlur::getOutputImg(){
 
 int main( int argc, char** argv ){
 	if( argc != 3){
-     cout <<"*Error* Usage: EdgePreservedBlur [imgPath] [k]" << endl;
+     cout <<"Usage: EdgePreservedBlur [imgPath] [k]" << endl;
      return -1;
     }
 
     Mat image;
     image = imread(argv[1], CV_LOAD_IMAGE_COLOR);   
     if(! image.data ){
-        cout <<  "*Error* Could not open or find the image" << std::endl ;
+        cout <<  "Could not open or find the image" << std::endl ;
         return -1;
     }
 
     int k = atoi(argv[2]);
     EdgePreservingBlur BlurImg(image, k);
-    imwrite("../data/output/result-" + to_string(k) + ".png", BlurImg.getOutputImg());
+    imwrite("data/output/result-" + to_string(k) + ".png", BlurImg.getOutputImg());
 
     return 0;
 }
