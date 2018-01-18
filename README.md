@@ -15,12 +15,15 @@ Basically, it's a c++ implementation of "**Edge-preserving multiscale image deco
 ### Building <br />
 ```Shell
 $ git clone https://github.com/yafangshih/EdgePreserving-Blur.git
+$ cd EdgePreserving-Blur
 $ mkdir build
 $ cd build
 $ cmake ..
 $ make
 ```
+
 ### Example <br />
 ```
-$ bulid/EdgePreservedBlur data/input/taipei101.jpg 3
+$ cd EdgePreserving-Blur
+$ bulid/EdgePreservingBlur data/input/taipei101.jpg 3
 ```
