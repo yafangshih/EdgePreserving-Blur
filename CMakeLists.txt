@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8)
-project(EdgePreservedBlur)
+project(EdgePreservingBlur)
 
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
@@ -37,6 +37,6 @@ ${EIGEN3_INCLUDE_DIR}
 )
 
 add_executable(${PROJECT_NAME}
-src/EdgePreservedBlur.cpp)
+src/main.cpp)
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS}
 )
